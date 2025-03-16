@@ -36,12 +36,6 @@ func NewPostgresDB(cfg config.DBConfig) (*sql.DB, error) {
 	return db, nil
 }
 
-func NewRepository(db DBConnection) *Repository {
-	return &Repository{
-		db: db,
-	}
-}
-
 func (r *Repository) Close() error {
 	return r.db.Close()
 }

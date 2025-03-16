@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/dyrober/AgencyCRM/internal/domain"
 )
@@ -20,18 +21,24 @@ type UserRepository interface {
 
 // Repository is the concrete implementation of UserRepository using PostgreSQL
 type Repository struct {
-	db DBConnection
+	db *sql.DB
 }
 
 // Ensure Repository implements UserRepository
 var _ UserRepository = (*Repository)(nil)
 
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{
+		db: db,
+	}
+}
+
 // DBConnection is an interface representing the database connection
 // This allows us to easily mock the database in tests
 type DBConnection interface {
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) RowScanner
-	QueryContext(ctx context.Context, query string, args ...interface{}) (Rows, error)
-	ExecContext(ctx context.Context, query string, args ...interface{}) (Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) RowScanner
+	QueryContext(ctx context.Context, query string, args ...any) (Rows, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	Close() error
 }
 
@@ -46,10 +53,4 @@ type Rows interface {
 	Next() bool
 	Err() error
 	Scan(dest ...interface{}) error
-}
-
-// Result is an interface for database result
-type Result interface {
-	LastInsertId() (int64, error)
-	RowsAffected() (int64, error)
 }

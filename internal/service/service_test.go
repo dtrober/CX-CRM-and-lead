@@ -35,6 +35,11 @@ func (m *MockUserRepository) CreateUser(ctx context.Context, user domain.User) (
 	return args.Int(0), args.Error(1)
 }
 
+func (m *MockUserRepository) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func TestGetUser(t *testing.T) {
 	// Test cases
 	tests := []struct {
