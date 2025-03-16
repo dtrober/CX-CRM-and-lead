@@ -2,8 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -17,7 +20,9 @@ import (
 // make a server obj
 type Server struct {
 	*http.Server
-	service *service.Service
+	service   *service.Service
+	templates *template.Template
+	cfg       *config.Config
 }
 
 // create a new http server
@@ -30,7 +35,11 @@ func NewServer(cfg *config.Config, svc *service.Service) *Server {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
-	//create a server
+	// Pre-parse templates recursively from the templates directory.
+	templates, err := parseTemplates(cfg.TemplatesDir)
+	if err != nil {
+		log.Printf("Warning: Failed to parse templates: %v", err)
+	}
 	srv := &Server{
 		Server: &http.Server{
 			Addr:         cfg.ServerAddress,
@@ -39,20 +48,90 @@ func NewServer(cfg *config.Config, svc *service.Service) *Server {
 			WriteTimeout: cfg.ServerWriteTimeout,
 			IdleTimeout:  120 * time.Second,
 		},
-		service: svc,
+		service:   svc,
+		templates: templates,
+		cfg:       cfg,
 	}
 
-	//Register routes
-	r.Get("/health", srv.healthCheck)
+	//static file server
+	fileServer := http.FileServer(http.Dir(cfg.StaticDir))
+	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
+
+	//Frontend Routes
+	r.Get("/", srv.homePage)
+	r.Get("/users", srv.usersPage)
 
 	//API Routes
+	r.Get("/health", srv.healthCheck)
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/users", func(r chi.Router) {
+			r.Get("/", srv.getUsers)
 			r.Post("/", srv.createUser)
 			r.Get("/{id}", srv.getUser)
 		})
 	})
 	return srv
+}
+
+// parseTemplates recursively parses all .html templates in the specified directory,
+// preserving the relative file paths as template names.
+func parseTemplates(dir string) (*template.Template, error) {
+	tmpl := template.New("")
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Ext(path) != ".html" {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		// Read file content
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		// Parse the template with its relative path as the name
+		_, err = tmpl.New(rel).Parse(string(content))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tmpl, nil
+}
+
+// Template rend helper
+func (s *Server) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
+	if s.templates == nil {
+		http.Error(w, "Templates not available", http.StatusInternalServerError)
+		return
+	}
+	if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
+		log.Printf("Error rendering template %s: %v", name, err)
+		http.Error(w, "Internal Server error", http.StatusInternalServerError)
+	}
+}
+
+// handle Page handles
+
+// Home page handler
+func (s *Server) homePage(w http.ResponseWriter, r *http.Request) {
+	// Render the home page template.
+	// The template name is based on the relative path from the templates directory.
+	s.renderTemplate(w, filepath.Join("pages", "index.html"), nil)
+}
+
+// Users page handler
+func (s *Server) usersPage(w http.ResponseWriter, r *http.Request) {
+	// Render the users page template.
+	s.renderTemplate(w, filepath.Join("pages", "users.html"), nil)
 }
 
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +140,18 @@ func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
 		"time":   time.Now().Format(time.RFC3339),
 	}
 	respondJSON(w, http.StatusOK, response)
+}
+
+// grabs all users
+func (s *Server) getUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := s.service.GetUsers(r.Context())
+	if err != nil {
+		log.Printf("Error getting users: %v", err)
+		respondError(w, http.StatusInternalServerError, "Failed to get users")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, users)
 }
 
 // GetUser grabs a user by ID

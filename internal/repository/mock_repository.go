@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/dyrober/AgencyCRM/internal/domain"
@@ -36,6 +37,27 @@ func (m *MockRepository) GetUser(ctx context.Context, id int) (*domain.User, err
 		return nil, ErrNotFound
 	}
 	return user, nil
+}
+
+// GetUsers retrieves all users from the in-memory map, sorted by ID in descending order
+func (m *MockRepository) GetUsers(ctx context.Context) ([]*domain.User, error) {
+	users := make([]*domain.User, 0, len(m.users))
+
+	for _, user := range m.users {
+		users = append(users, user)
+	}
+
+	// Sort by ID in descending order to match SQL ORDER BY id DESC
+	sort.Slice(users, func(i, j int) bool {
+		return users[i].ID > users[j].ID
+	})
+
+	// Limit to 100 users to match SQL LIMIT 100
+	if len(users) > 100 {
+		users = users[:100]
+	}
+
+	return users, nil
 }
 
 // CreateUser adds a new user to the in-memory map

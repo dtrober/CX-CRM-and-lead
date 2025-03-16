@@ -20,6 +20,24 @@ func NewService(repo repository.UserRepository) *Service {
 	}
 }
 
+// GetUsers retrevies all users
+func (s *Service) GetUsers(ctx context.Context) ([]*domain.UserResponse, error) {
+	users, err := s.repo.GetUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("service error - get users: %w", err)
+	}
+	var response []*domain.UserResponse
+	for _, user := range users {
+		response = append(response, &domain.UserResponse{
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt,
+		})
+	}
+	return response, nil
+}
+
 // GetUser retreives user by id
 func (s *Service) GetUser(ctx context.Context, id int) (*domain.UserResponse, error) {
 	user, err := s.repo.GetUser(ctx, id)

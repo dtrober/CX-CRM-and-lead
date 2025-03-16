@@ -41,6 +41,12 @@ func main() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server %v", err)
 		}
+		if _, err := os.Stat(cfg.TemplatesDir); os.IsNotExist(err) {
+			log.Printf("Warning: Templates directory does not exist: %s", cfg.TemplatesDir)
+		}
+		if _, err := os.Stat(cfg.StaticDir); os.IsNotExist(err) {
+			log.Printf("Warning: Static directory does not exist: %s", cfg.StaticDir)
+		}
 	}()
 
 	//Wait for inpterupt signal

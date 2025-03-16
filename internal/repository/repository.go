@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/dyrober/AgencyCRM/internal/domain"
 )
@@ -11,7 +12,7 @@ import (
 type UserRepository interface {
 	// GetUser retrieves a user by ID
 	GetUser(ctx context.Context, id int) (*domain.User, error)
-
+	GetUsers(ctx context.Context) ([]*domain.User, error)
 	// CreateUser creates a new user
 	CreateUser(ctx context.Context, user domain.User) (int, error)
 
@@ -53,4 +54,32 @@ type Rows interface {
 	Next() bool
 	Err() error
 	Scan(dest ...interface{}) error
+}
+
+func (r *Repository) GetUsers(ctx context.Context) ([]*domain.User, error) {
+	query := `SELECT id, name, email, created_at, updated_at FROM users ORDER BY id DESC LIMIT 100`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users: %w", err)
+	}
+	defer rows.Close()
+	var users []*domain.User
+	for rows.Next() {
+		var user domain.User
+		if err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.Email,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+		users = append(users, &user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate over user rows: %w", err)
+	}
+	return users, nil
 }
