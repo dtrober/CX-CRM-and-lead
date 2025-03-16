@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.docker
+Dockerfile
+docker-compose.yml
+
+# IDE specific files
+.idea
+.vscode
+*.swp
+*.swo
+
+# Misc
+*.md
+LICENSE
+.env
+.DS_Store
+
+# Binaries
+myapp
+bin/
+/api
+
+# Log files
+*.log
+
+# Test files
+*_test.go

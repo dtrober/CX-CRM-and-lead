@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  test-db:
+    image: postgres:15-alpine
+    container_name: myapp-test-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=myapp_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: myapp-test-app
+    environment:
+      - TEST_DB_HOST=test-db
+      - TEST_DB_PORT=5432
+      - TEST_DB_USER=postgres
+      - TEST_DB_PASSWORD=postgres
+      - TEST_DB_NAME=myapp_test
+      - INTEGRATION_TESTS=true
+    depends_on:
+      - test-db
+    command: ["sh", "-c", "sleep 5 && go test -v ./... ./tests/integration/..."]

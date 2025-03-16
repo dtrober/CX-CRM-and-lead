@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: myapp-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_ADDRESS=:8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=myapp
+      - DB_SSLMODE=disable
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - myapp-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: myapp-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=myapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Initialize database with schema and sample data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - myapp-network
+
+  # Optional: Add PostgreSQL admin UI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: myapp-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - myapp-network
+
+networks:
+  myapp-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
