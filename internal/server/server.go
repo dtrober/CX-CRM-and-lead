@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -35,11 +34,6 @@ func NewServer(cfg *config.Config, svc *service.Service) *Server {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
-	// Pre-parse templates recursively from the templates directory.
-	templates, err := parseTemplates(cfg.TemplatesDir)
-	if err != nil {
-		log.Printf("Warning: Failed to parse templates: %v", err)
-	}
 	srv := &Server{
 		Server: &http.Server{
 			Addr:         cfg.ServerAddress,
@@ -48,9 +42,8 @@ func NewServer(cfg *config.Config, svc *service.Service) *Server {
 			WriteTimeout: cfg.ServerWriteTimeout,
 			IdleTimeout:  120 * time.Second,
 		},
-		service:   svc,
-		templates: templates,
-		cfg:       cfg,
+		service: svc,
+		cfg:     cfg,
 	}
 
 	//static file server
@@ -76,62 +69,44 @@ func NewServer(cfg *config.Config, svc *service.Service) *Server {
 
 // parseTemplates recursively parses all .html templates in the specified directory,
 // preserving the relative file paths as template names.
-func parseTemplates(dir string) (*template.Template, error) {
-	tmpl := template.New("")
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() || filepath.Ext(path) != ".html" {
-			return nil
-		}
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
-		}
-		// Read file content
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		// Parse the template with its relative path as the name
-		_, err = tmpl.New(rel).Parse(string(content))
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return tmpl, nil
-}
-
-// Template rend helper
-func (s *Server) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if s.templates == nil {
-		http.Error(w, "Templates not available", http.StatusInternalServerError)
-		return
-	}
-	if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
-		log.Printf("Error rendering template %s: %v", name, err)
-		http.Error(w, "Internal Server error", http.StatusInternalServerError)
-	}
+func parsePageTemplates(basePath, pagePath string) (*template.Template, error) {
+	return template.ParseFiles(basePath, pagePath)
 }
 
 // handle Page handles
 
 // Home page handler
 func (s *Server) homePage(w http.ResponseWriter, r *http.Request) {
-	// Render the home page template.
-	// The template name is based on the relative path from the templates directory.
-	s.renderTemplate(w, filepath.Join("pages", "index.html"), nil)
+	tmpl, err := parsePageTemplates(
+		filepath.Join(s.cfg.TemplatesDir, "base.html"),
+		filepath.Join(s.cfg.TemplatesDir, "pages", "index.html"),
+	)
+	if err != nil {
+		log.Printf("Error parsing home templates: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "base", nil); err != nil {
+		log.Printf("Error executing home template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // Users page handler
 func (s *Server) usersPage(w http.ResponseWriter, r *http.Request) {
-	// Render the users page template.
-	s.renderTemplate(w, filepath.Join("pages", "users.html"), nil)
+	tmpl, err := parsePageTemplates(
+		filepath.Join(s.cfg.TemplatesDir, "base.html"),
+		filepath.Join(s.cfg.TemplatesDir, "pages", "users.html"),
+	)
+	if err != nil {
+		log.Printf("Error parsing users templates: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "base", nil); err != nil {
+		log.Printf("Error executing users template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
