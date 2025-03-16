@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -85,7 +86,7 @@ func TestGetUser(t *testing.T) {
 	}
 
 	// Create a request with the user ID in the URL path
-	req, err := http.NewRequest("GET", "/users/"+string(userID), nil)
+	req, err := http.NewRequest("GET", "/users/"+strconv.Itoa(userID), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +100,7 @@ func TestGetUser(t *testing.T) {
 
 	// Reassign URL parameters for the request
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey,
-		&chi.Context{URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{string(userID)}}}))
+		&chi.Context{URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{strconv.Itoa(userID)}}}))
 
 	// Send the request to the router
 	router.ServeHTTP(rr, req)

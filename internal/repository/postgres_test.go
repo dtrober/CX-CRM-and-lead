@@ -133,16 +133,20 @@ func TestRepository_GetUser(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	testID := fmt.Sprintf("%d", time.Now().UnixNano())
+
 	// Insert a test user
 	testUser := domain.User{
-		Name:  "Test User",
-		Email: "testrepo@example.com",
+		Name:  "Test User " + testID,
+		Email: fmt.Sprintf("testrepo_%s@example.com", testID),
 	}
 
 	userID, err := testRepo.CreateUser(ctx, testUser)
 	if err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
+
+	time.Sleep(100 * time.Millisecond)
 
 	// Test cases
 	t.Run("existing user", func(t *testing.T) {
@@ -216,6 +220,8 @@ func TestRepository_CreateUser(t *testing.T) {
 			t.Errorf("Expected positive user ID, got %d", userID)
 		}
 
+		time.Sleep(100 * time.Millisecond)
+
 		// Verify we can retrieve the user
 		createdUser, err := testRepo.GetUser(ctx, userID)
 		if err != nil {
@@ -243,6 +249,8 @@ func TestRepository_CreateUser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create first user: %v", err)
 		}
+
+		time.Sleep(100 * time.Millisecond)
 
 		// Try to create another user with the same email
 		user2 := domain.User{

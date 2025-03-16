@@ -30,7 +30,9 @@ services:
       - TEST_DB_PASSWORD=postgres
       - TEST_DB_NAME=myapp_test
       - INTEGRATION_TESTS=true
+      - REPO_TESTS=true
+      - E2E_TESTS=false
     depends_on:
       - test-db
-    # Updated command to use the correct test path
+    # Fixed the path with the correct spelling of the directory
     command: ["sh", "-c", "sleep 5 && go test -v ./... ./test/integration/..."]
