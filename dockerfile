@@ -28,15 +28,24 @@ RUN apk --no-cache add ca-certificates tzdata
 # Set working directory
 WORKDIR /app
 
-# Create a non-root user and switch to it
+# Create a non-root user 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
+
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/myapp .
 
 # Copy migrations
 COPY --from=builder /app/migrations ./migrations
+
+# Copy web assets
+COPY --from=builder /app/web ./web
+
+# Change ownership of web directory to appuser
+RUN chown -R appuser:appgroup ./web
+
+#Switch to non sudo user
+USER appuser
 
 # Expose port
 EXPOSE 8080

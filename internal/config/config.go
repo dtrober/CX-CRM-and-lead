@@ -15,6 +15,8 @@ type Config struct {
 	ServerReadTimeout  time.Duration
 	ServerWriteTimeout time.Duration
 	DB                 DBConfig
+	StaticDir          string
+	TemplatesDir       string
 }
 
 // This holds the configs for the DB
@@ -55,6 +57,8 @@ func Load() (*Config, error) {
 		ServerAddress:      getEnv("SERVER_ADDRESS", ":8080"),
 		ServerReadTimeout:  time.Duration(readTimeout) * time.Second,
 		ServerWriteTimeout: time.Duration(writeTimeout) * time.Second,
+		StaticDir:          getEnv("STATIC_DIR", "/app/web/static"),
+		TemplatesDir:       getEnv("TEMPLATES_DIR", "/app/web/templates"),
 		DB: DBConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     dbPort,

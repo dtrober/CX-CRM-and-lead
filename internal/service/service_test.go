@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,6 +15,25 @@ import (
 // Mock implementation of UserRepository
 type MockUserRepository struct {
 	mock.Mock
+}
+
+func (m *MockUserRepository) GetUsers(ctx context.Context) ([]*domain.User, error) {
+	args := m.Called(ctx)
+
+	// Handle the first return value, which should be []*domain.User
+	users, ok := args.Get(0).([]*domain.User)
+	if !ok && args.Get(0) != nil {
+		// This will happen if the wrong type was returned from the mock setup
+		return nil, fmt.Errorf("unexpected type for users return value")
+	}
+
+	// Handle the second return value, which should be an error
+	var err error
+	if errArg := args.Error(1); errArg != nil {
+		err = errArg
+	}
+
+	return users, err
 }
 
 // Mock implementation of GetUser
