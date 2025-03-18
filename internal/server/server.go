@@ -53,6 +53,7 @@ func NewServer(cfg *config.Config, svc *service.Service) *Server {
 	//Frontend Routes
 	r.Get("/", srv.homePage)
 	r.Get("/users", srv.usersPage)
+	r.Get("/ingest", srv.ingestPage)
 
 	//API Routes
 	r.Get("/health", srv.healthCheck)
@@ -97,6 +98,22 @@ func (s *Server) usersPage(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := parsePageTemplates(
 		filepath.Join(s.cfg.TemplatesDir, "base.html"),
 		filepath.Join(s.cfg.TemplatesDir, "pages", "users.html"),
+	)
+	if err != nil {
+		log.Printf("Error parsing users templates: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "base", nil); err != nil {
+		log.Printf("Error executing users template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) ingestPage(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := parsePageTemplates(
+		filepath.Join(s.cfg.TemplatesDir, "base.html"),
+		filepath.Join(s.cfg.TemplatesDir, "pages", "ingest.html"),
 	)
 	if err != nil {
 		log.Printf("Error parsing users templates: %v", err)
